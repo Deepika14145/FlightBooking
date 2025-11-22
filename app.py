@@ -1,36 +1,32 @@
+# app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from model import predict_price, best_day_to_book
+from model import predict_price, best_day_to_book, model_options
 
-# Page config
-st.set_page_config(
-    page_title="Flight Price Predictor",
-    page_icon="✈️",
-    layout="centered"
-)
+st.set_page_config(page_title="Flight Price Predictor", page_icon="✈️", layout="wide")
 
-st.title("✈️ Flight Price Prediction & Best Booking Day")
-st.markdown("Enter your flight details to get prediction and booking advice.")
+st.title("✈️ Flight Price & Best Booking Day (Instant Prediction)")
+st.write("Fill in flight details. The app will predict today's price and also forecast the best day to book within the next 30 days.")
 
-# --------------------------
-# User Input Form
-# --------------------------
+# Helper to fetch valid dataset options
+def opt(key, default=[]):
+    return model_options.get(key, default)
 
-airline = st.selectbox("Airline", ["Indigo", "Air India", "SpiceJet", "GoAir", "Vistara", "AirAsia"])
-source_city = st.selectbox("Source City", ["Delhi", "Mumbai", "Bangalore", "Hyderabad", "Kolkata", "Chennai"])
-destination_city = st.selectbox("Destination City", ["Delhi", "Mumbai", "Bangalore", "Hyderabad", "Kolkata", "Chennai"])
+# ---------------------- Input Section ----------------------
+st.sidebar.header("Flight Details")
 
-departure_time = st.selectbox("Departure Time", ["Early Morning", "Morning", "Afternoon", "Evening", "Night", "Late Night"])
-arrival_time = st.selectbox("Arrival Time", ["Early Morning", "Morning", "Afternoon", "Evening", "Night", "Late Night"])
+airline = st.sidebar.selectbox("Airline", opt("airline"))
+source_city = st.sidebar.selectbox("Source City", opt("source_city"))
+destination_city = st.sidebar.selectbox("Destination City", opt("destination_city"))
+departure_time = st.sidebar.selectbox("Departure Time", opt("departure_time"))
+arrival_time = st.sidebar.selectbox("Arrival Time", opt("arrival_time"))
+stops = st.sidebar.selectbox("Stops", opt("stops"))
+travel_class = st.sidebar.selectbox("Class", opt("class"))
 
-stops = st.selectbox("Stops", ["zero", "one", "two_or_more"])
-travel_class = st.selectbox("Class", ["Economy", "Business"])
+duration = st.sidebar.number_input("Duration (hours)", 0.5, 48.0, 2.0, step=0.1)
+days_left = st.sidebar.number_input("Days until Travel (book today)", 0, 365, 10, step=1)
+horizon = st.sidebar.slider("Prediction Range (Days)", 7, 60, 30)
 
-duration = st.number_input("Flight Duration (Hours)", min_value=1.0, max_value=15.0, step=0.1)
-days_left = st.number_input("Days Left Before Travel", min_value=0, max_value=60, step=1)
-
-# Build input dictionary
 details = {
     "airline": airline,
     "source_city": source_city,
@@ -39,33 +35,45 @@ details = {
     "arrival_time": arrival_time,
     "destination_city": destination_city,
     "class": travel_class,
-    "duration": duration,
-    "days_left": days_left
+    "duration": float(duration),
+    "days_left": int(days_left)
 }
 
-# --------------------------
-# Predict Button
-# --------------------------
-if st.button("Predict Price"):
-    price = predict_price(details)
-    st.success(f"Estimated Price: ₹{int(price)}")
+st.markdown("---")
+st.subheader("📊 Prediction Results")
 
+# ---------------------- Main Prediction Trigger ----------------------
+if st.button("Predict Price & Best Booking Day"):
+    
+    # Predict price today
+    today_price = int(predict_price(details))
 
-# --------------------------
-# Best Day Recommendation
-# --------------------------
-if st.button("Recommend Best Booking Day"):
+    # Predict best day
+    best_day, price_list = best_day_to_book(details, horizon_days=horizon)
+    best_price = int(min(price_list))
 
-    best_day, prices = best_day_to_book(details)
+    # Two-column metric display
+    c1, c2 = st.columns(2)
+    c1.metric("Price if Booked Today", f"₹{today_price:,}")
+    c2.metric("Best Price in Forecast", f"₹{best_price:,}", delta=f"Best Day: {best_day}")
 
-    st.info(f"Best Day to Book: **Day {best_day}** from today")
+    st.markdown("---")
 
-    df_plot = pd.DataFrame({
-        "Day": list(range(30)),
-        "Price": prices
-    })
+    # ---------------------- Line Chart ----------------------
+    df_chart = pd.DataFrame({
+        "Day": list(range(horizon)),
+        "Predicted Price": [int(p) for p in price_list]
+    }).set_index("Day")
 
-    fig = px.line(df_plot, x="Day", y="Price",
-                  title="30-Day Predicted Price Trend",
-                  markers=True)
-    st.plotly_chart(fig)
+    st.subheader("📈 Price Forecast for Next 30 Days")
+    st.line_chart(df_chart)
+
+    # ---------------------- Table View ----------------------
+    st.subheader("📄 Detailed Price List")
+    st.dataframe(df_chart)
+
+else:
+    st.info("Click the button to get full prediction, forecast and charts.")
+
+st.markdown("---")
+st.caption("Model trained on `/mnt/data/Clean_Dataset.csv`. Unknown categories are safely handled.")
