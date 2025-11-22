@@ -71,15 +71,12 @@ AirAsia,I5-764,Delhi,Early_Morning,zero,Early_Morning,Mumbai,Economy,2.17,1,5956
 
 ## 📸 Screenshots
 
-*Add your screenshots below:*
 
-```
-[ Place Screenshot 1 here ]
+
 <img width="1883" height="946" alt="image" src="https://github.com/user-attachments/assets/6bb32d82-4a6f-43b0-91ad-68b49afa81e6" />
 <img width="1644" height="470" alt="image" src="https://github.com/user-attachments/assets/ec57c039-d79e-4837-b3fd-ba07abf0f28f" />
 
-[ Place Screenshot 2 here ]
-```
+
 
 ---
 
